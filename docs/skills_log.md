@@ -32,4 +32,15 @@ and the problem each one solved. Append to this at the end of every session.
 - Solved: choosing a project layout that scales beyond Phase 0.
 - Reference: PyPA packaging guide on src vs flat layouts.
 
+## 2026-05-01 — Phase 0 — Phase-gate verification workflow
+- The discipline of running each tool the gate names (`uv sync`, `ruff`,
+  `ruff format --check`, `black --check`, `mypy`, `pytest`, `pre-commit run`)
+  against a fully-staged tree before tagging — instead of trusting that
+  scaffolded config implies passing config.
+- Solved: catching the failure-mode where pre-commit's `--all-files` silently
+  skips because nothing is git-tracked yet; staging first then re-running
+  exercises every hook against real content.
+- Reference: pre-commit docs §"Filtering files with types" + git's two-step
+  index model.
+
 _(append one entry per session)_
