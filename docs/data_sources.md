@@ -130,6 +130,16 @@ ingestion code.
   - More than 2 M postcodes — load into DuckDB, never pandas-only.
   - Includes terminated postcodes — filter on `doterm IS NULL` for currently
     active ones.
+  - Column names changed in 2024 to `<year>cd`-suffixed form
+    (`lsoa11cd`, `lad25cd`, `ctry25cd`, etc). The pre-2024 names
+    (`lsoa11`, `oslaua`, `ctry`) are gone — anything you copy from older
+    notebooks needs updating.
+- **Currently pinned release:** ONSPD February 2026 (`ONSPD_FEB_2026.zip`,
+  235 MB, ArcGIS Hub item id `3080229224424c9cb53c0b48f5a64d27`).
+  Loaded **1,794,940** active UK postcodes on 2026-05-08.
+- **How to refresh:** `make ingest-onspd URL=https://www.arcgis.com/sharing/rest/content/items/<NEW_ITEM_ID>/data`
+  — find the item ID by visiting the new release's geoportal page and
+  reading the URL.
 
 ### 8. OS Open data — Code-Point Open and OS OpenData
 - **URL:** https://www.ordnancesurvey.co.uk/products/code-point-open

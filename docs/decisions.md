@@ -23,6 +23,29 @@ the project later attracts funding for a paid GeoSure licence, the
 ingestion layer can swap sources behind the same `subsidence_class`
 interface without touching downstream code.
 
+## 2026-05-08 — Pinned ONSPD release: February 2026; refresh via parametrised URL
+Considered: hardcoding a download URL in the loader vs parametrising it via
+CLI argument / env var. Chose parametrised because the geoportal item ID
+changes every quarter — hardcoding would mean a code change every refresh.
+The fetch script (`scripts/fetch_onspd.py`) takes `--url` (or reads
+`ONSPD_URL` from env), the data source documentation in
+`docs/data_sources.md` records the *current* pinned release for
+reproducibility, and the loader itself is source-agnostic (takes a CSV
+path, knows nothing about URLs). Currently pinned: ONSPD February 2026,
+ArcGIS Hub item `3080229224424c9cb53c0b48f5a64d27`, 1,794,940 active
+postcodes loaded.
+
+## 2026-05-08 — ONSPD column-naming convention: post-2024 `<year>cd` form
+Considered: writing the loader against the older `lsoa11` / `oslaua` /
+`ctry` names (still seen in tutorials and many open-source projects) vs
+the current `lsoa11cd` / `lad25cd` / `ctry25cd` form. Chose the current
+form because (a) it's what the actual Feb 2026 file ships with, and (b)
+the year suffix on `lad25cd` and `ctry25cd` is a real signal — the LAD
+and country boundary sets are versioned and the projection-layer code
+(Phase 3) will need to know which vintage. The mapping into our internal
+`postcode_directory` table re-aliases to short names (`lad`, `ctry`)
+because we don't expose the year boundary in the public API.
+
 ## 2026-05-08 — Postcode-handling layer is pure-code, lives in `hazards/postcode.py`
 Considered: bundling postcode normalisation into the spatial-lookup
 function vs splitting it into its own pure-Python module. Chose split
