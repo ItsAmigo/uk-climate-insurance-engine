@@ -7,6 +7,35 @@ was chosen*, *why*. New entries at the top.
 
 ---
 
+## 2026-05-08 — Subsidence data source: DEFRA Soilscapes (not BGS GeoSure)
+Considered: BGS GeoSure (richest UK subsidence dataset, scores shrink-swell
+clay risk directly) vs DEFRA Soilscapes (broader soil-type classification,
+not subsidence-specific). GeoSure is the better signal but its licence
+permits viewing only — the underlying numbers cannot be redistributed
+without a paid commercial licence, which would prevent publishing the
+ingestion code on a public GitHub repo and would compromise the "anyone
+can reproduce this pipeline" portfolio story. Soilscapes is fully open
+under OGL v3.0. Chose Soilscapes: the portfolio value of a fully
+reproducible open pipeline outweighs the resolution loss, and the
+methodology write-up will be explicit that subsidence is approximated
+from soil type rather than measured from a subsidence-specific model. If
+the project later attracts funding for a paid GeoSure licence, the
+ingestion layer can swap sources behind the same `subsidence_class`
+interface without touching downstream code.
+
+## 2026-05-08 — Postcode-handling layer is pure-code, lives in `hazards/postcode.py`
+Considered: bundling postcode normalisation into the spatial-lookup
+function vs splitting it into its own pure-Python module. Chose split
+because (a) postcode parsing has zero dependency on the loaded hazard
+data, so it can ship and be tested before any ingestion lands, and (b)
+the normalisation rules (uppercase, single space, GIR special case) are
+well-defined regex logic that benefits from focused property-based tests
+in isolation. The function returns a typed `Postcode` dataclass instead
+of a raw string so the rest of the pipeline can rely on a validated
+shape rather than re-parsing strings.
+
+---
+
 ## 2026-04-30 — pyproject `package = true` with src/ layout via hatchling
 Considered: flat layout (simpler) vs src/ layout (best practice for libraries
 because it forces the test runner to import from the installed package, not
