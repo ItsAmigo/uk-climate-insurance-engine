@@ -46,7 +46,7 @@ After ticking a phase complete:
 - [ ] Methodology section "Hazard data" written
 - [x] At least 3 new entries in `docs/decisions.md` added during the phase
       *(7 entries since 2026-05-08)*
-- [ ] Test coverage ≥ 70% on the `hazards/` module
+- [x] Test coverage ≥ 70% on the `hazards/` module *(86% as of 2026-05-09)*
 - [ ] Tag: `v0.2-hazards`
 
 ---
