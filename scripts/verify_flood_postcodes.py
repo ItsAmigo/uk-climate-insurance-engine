@@ -17,15 +17,16 @@ from pathlib import Path
 
 from climate_insurance.hazards import lookup_postcode_flood_zone
 
-# A spread of locations chosen so we hit Zone 1 / 2 / 3 across England.
-# These are starting suggestions; substitute with the EA-website-verified
-# results when filling in the findings table.
+# Five locations chosen to span Zone 1 / 2 / 3 across England with known
+# geography, so the comparison against the EA public flood-map website
+# (https://check-long-term-flood-risk.service.gov.uk/postcode) is
+# unambiguous.
 DEFAULT_POSTCODES: list[str] = [
-    "SW1A 1AA",  # Buckingham Palace, central London — expected Zone 1 (raised)
-    "YO1 9TR",  # York city centre — known Ouse floodplain, expected Zone 3
-    "RG1 8DH",  # Reading, near the Thames — expected Zone 2 or 3
-    "M1 1AE",  # Manchester city centre — mostly Zone 1
-    "NG1 6HF",  # Nottingham, near River Trent — expected Zone 2 or 3
+    "SW1A 1AA",  # Buckingham Palace area, central London (raised) — expect Z1
+    "YO1 7HH",  # York Minster area, between rivers Ouse and Foss — expect Z3
+    "TW9 1AB",  # Kew, beside the Thames floodplain — expect Z2 or Z3
+    "M1 1AE",  # Manchester city centre — mostly Z1
+    "GL1 2HG",  # Gloucester city centre, near River Severn — expect Z3
 ]
 
 
