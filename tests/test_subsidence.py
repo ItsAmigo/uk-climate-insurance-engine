@@ -69,8 +69,7 @@ def _make_spm_db(tmp_path: Path) -> Path:
     db = tmp_path / "hazards.duckdb"
     with duckdb.connect(str(db)) as con:
         con.execute("INSTALL spatial; LOAD spatial")
-        con.execute(
-            f"""
+        con.execute(f"""
             CREATE TABLE {SPM_TABLE} (
                 uid VARCHAR,
                 esb_desc VARCHAR,
@@ -81,8 +80,7 @@ def _make_spm_db(tmp_path: Path) -> Path:
                 soil_depth VARCHAR,
                 geom GEOMETRY
             )
-            """
-        )
+            """)
         con.execute(
             f"INSERT INTO {SPM_TABLE} VALUES "
             "('a','CLAY','LOW','ARGILLACEOUS','HEAVY','CLAY','DEEP', "
