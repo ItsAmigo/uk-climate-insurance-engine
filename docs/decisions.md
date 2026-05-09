@@ -7,6 +7,44 @@ was chosen*, *why*. New entries at the top.
 
 ---
 
+## 2026-05-09 — Spatial backend: DuckDB `spatial` extension (not PostGIS)
+Considered: PostGIS (the production-grade spatial database, used by every
+serious GIS team) vs DuckDB's first-party `spatial` extension. PostGIS is
+more battle-tested for huge concurrent workloads, but it requires running
+a separate Postgres server, managing migrations, and adds operational
+overhead that doesn't pay off until Phase 3 when the API needs concurrent
+reads. DuckDB-spatial is built into the same in-process database we
+already use for ONSPD, supports R-tree indexes, GeoJSON / GeoPackage
+ingest, and the full `ST_*` query vocabulary we need (`ST_Contains`,
+`ST_Point`, `ST_GeomFromGeoJSON`). Chose DuckDB-spatial. Phase 3 will
+revisit when we move to Postgres for the API; the spatial query patterns
+translate one-to-one to PostGIS so the cutover is safe.
+
+## 2026-05-09 — EA flood-zone source: ArcGIS Hub Feature Service, paginated
+Considered three ways to obtain the Environment Agency Flood Map for
+Planning data: (a) the Defra Data Services Platform UI (the "official"
+front door, but JavaScript-only and offers no programmatic download
+URL), (b) the EA's ArcGIS Hub Feature Service (the canonical hosted
+copy, Open Government Licence, public, paginated query API), or
+(c) third-party Esri UK republications (ambiguous freshness, may be
+stale). Chose (b) — the EA's own Hub Feature Service at
+`services1.arcgis.com/JZM7qJpmv7vJ0Hzx`. The Feature Service has no
+single-download URL because the dataset is too large for synchronous
+export, so we paginate through the `query` endpoint at 2000 features
+per call (~400 calls, ~25-30 min total) with a polite 0.2s sleep
+between calls. This is reproducible from a public repo without browser
+automation, scraping JavaScript, or relying on a third party.
+
+## 2026-05-09 — Coordinate reference system: WGS84 (EPSG:4326) end-to-end
+Considered: ingest in British National Grid (EPSG:27700, the EA's
+native CRS) and reproject at lookup time vs request `outSR=4326` from
+the Feature Service so data arrives in WGS84 already. The ONSPD
+coordinates are in WGS84, so reprojecting on ingest aligns everything
+in a single coordinate system from the start. The accuracy loss in
+reprojection is well under the resolution of the postcode-centroid
+input. Chose ingest-time reprojection via `outSR=4326`. The choice
+also makes downstream display on web maps (which expect WGS84) free.
+
 ## 2026-05-08 — Subsidence data source: DEFRA Soilscapes (not BGS GeoSure)
 Considered: BGS GeoSure (richest UK subsidence dataset, scores shrink-swell
 clay risk directly) vs DEFRA Soilscapes (broader soil-type classification,

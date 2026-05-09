@@ -1,7 +1,7 @@
 # Climate Insurance Engine — developer shortcuts.
 # All recipes use `uv run` so the project venv is always used.
 # On Windows, run via Git Bash, WSL, or install make:  winget install ezwinports.make
-.PHONY: install test lint fmt notebook duckdb clean help ingest-onspd
+.PHONY: install test lint fmt notebook duckdb clean help ingest-onspd ingest-ea-flood
 
 help:
 	@echo "Targets:"
@@ -43,6 +43,12 @@ duckdb:
 # (search "ONS Postcode Directory", click latest release).
 ingest-onspd:
 	uv run python -m scripts.fetch_onspd $(if $(URL),--url $(URL),)
+
+# Download EA Flood Zones 2 and 3 (England) and ingest to DuckDB.
+# Takes 25-30 min on a typical home connection (paginated through ArcGIS).
+# Pass SKIP=1 to reuse an existing GeoJSON in data/raw/ea_flood_zones/.
+ingest-ea-flood:
+	uv run python -m scripts.fetch_ea_flood_zones $(if $(SKIP),--skip-download,)
 
 clean:
 	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov coverage.xml .coverage
