@@ -22,21 +22,42 @@ ingestion code.
 ## Hazard layers
 
 ### 1. Environment Agency — Flood Map for Planning (England)
-- **URL:** https://environment.data.gov.uk/  (search "Flood Map for Planning Rivers and Sea")
-  Also published via DEFRA Data Services Platform: https://environment.data.gov.uk/portalstg/
-- **Extract:** Flood Zones 2 and 3 polygons (rivers and sea, ignoring
-  climate-change overlay — we apply UKCP18 ourselves in Phase 3).
-  Source data is published as Shapefile / GeoPackage / WFS API.
-- **License:** Open Government Licence v3.0 (OGL). Free for any use with
-  attribution: *"Contains Environment Agency information © Environment Agency
-  and database right"*.
+- **Canonical source:** Environment Agency's own ArcGIS Hub Feature Service:
+  `https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/arcgis/rest/services/Flood_Map_for_Planning/FeatureServer`
+  Item id `510b860c094046f7813d86811a646543`. Hub item URL:
+  https://www.arcgis.com/home/item.html?id=510b860c094046f7813d86811a646543
+  The Defra Data Services Platform UI at
+  https://environment.data.gov.uk/dataset/04532375-a198-476e-985e-0579a0a11b47
+  surfaces the same data but is JavaScript-only — direct downloads must come
+  from the Feature Service above.
+- **Extract:** Flood Zone 2 polygons (~553k features) and Flood Zone 3 polygons
+  (~231k features). Layer indices on the FeatureServer: `1` = Zone 3,
+  `2` = Zone 2. We **exclude** the climate-change overlay (CLAUDE.md hard
+  rule 8 — we apply UKCP18 ourselves in Phase 3).
+- **License:** Open Government Licence v3.0 (OGL). Attribution required:
+  *"Contains Environment Agency information © Environment Agency and database
+  right. Some features based on digital spatial data from the Centre for
+  Ecology & Hydrology, © NERC (CEH). © Crown Copyright and Database Rights
+  2024 OS AC0000807064."*
+- **Source CRS:** British National Grid (EPSG:27700). We request `outSR=4326`
+  on the Feature Service query so the GeoJSON arrives already in WGS84
+  (lat/lon) — same coordinate system as ONSPD postcode coords. No
+  reprojection needed at ingest.
 - **Registration:** None.
+- **Refresh:** `make ingest-ea-flood` — paginates through the Feature Service
+  at the API limit of 2000 records per call, sleeps 0.2s between calls.
+  Takes ~25–30 min on a typical home connection. Sets `outSR=4326`.
+- **Currently pinned release:** Flood Zones 2 and 3 published November 2023
+  (the EA's most recent revision as of May 2026). 553,158 Zone 2 polygons
+  and 231,054 Zone 3 polygons.
 - **Gotchas:**
-  - File size > 100 MB — do NOT commit. Place in `data/raw/ea_flood_zones/`.
-  - Zone 3 is the higher-probability zone (1-in-100 fluvial / 1-in-200 tidal).
-    Zone 2 is 1-in-1 000.
+  - Combined GeoJSON download is ~1–2 GB — do NOT commit. Place in
+    `data/raw/ea_flood_zones/` (gitignored).
+  - Zone 3 is the higher-probability zone (1-in-100 annual chance from
+    rivers / 1-in-200 from sea). Zone 2 is 1-in-1,000 to 1-in-100.
   - England only. Wales / Scotland / NI need separate sources below.
-  - Updated multiple times a year — record the download date in `decisions.md`.
+  - The Feature Service does not support a single bulk-download URL — full
+    extraction must paginate.
 
 ### 2. SEPA — Flood Maps (Scotland)
 - **URL:** https://www.sepa.org.uk/environment/water/flooding/flood-maps/
@@ -130,6 +151,16 @@ ingestion code.
   - More than 2 M postcodes — load into DuckDB, never pandas-only.
   - Includes terminated postcodes — filter on `doterm IS NULL` for currently
     active ones.
+  - Column names changed in 2024 to `<year>cd`-suffixed form
+    (`lsoa11cd`, `lad25cd`, `ctry25cd`, etc). The pre-2024 names
+    (`lsoa11`, `oslaua`, `ctry`) are gone — anything you copy from older
+    notebooks needs updating.
+- **Currently pinned release:** ONSPD February 2026 (`ONSPD_FEB_2026.zip`,
+  235 MB, ArcGIS Hub item id `3080229224424c9cb53c0b48f5a64d27`).
+  Loaded **1,794,940** active UK postcodes on 2026-05-08.
+- **How to refresh:** `make ingest-onspd URL=https://www.arcgis.com/sharing/rest/content/items/<NEW_ITEM_ID>/data`
+  — find the item ID by visiting the new release's geoportal page and
+  reading the URL.
 
 ### 8. OS Open data — Code-Point Open and OS OpenData
 - **URL:** https://www.ordnancesurvey.co.uk/products/code-point-open

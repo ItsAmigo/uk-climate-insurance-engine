@@ -27,18 +27,22 @@ After ticking a phase complete:
 
 ## Phase 1 — Hazard ingestion
 - [ ] Environment Agency Flood Zone 2 + 3 polygons loaded into DuckDB,
-      indexed spatially (R-tree or H3)
+      indexed spatially (R-tree or H3) *(loader + lookup code complete and
+      synthetic-tested; full England download in progress)*
 - [ ] SEPA + NRW + DfI Rivers flood polygons loaded into the same schema, harmonised
 - [ ] Subsidence proxy ingested (BGS GeoSure-via-WMS or DEFRA Soilscapes —
-      decision logged in `docs/decisions.md`)
+      decision logged in `docs/decisions.md`)  *(decision: Soilscapes; loader pending)*
 - [ ] Postcode → hazard exposure function in `src/climate_insurance/hazards/`,
       returning `{flood_zone, subsidence_class, windstorm_band}`
+      *(flood_zone slice complete via `lookup_postcode_flood_zone`)*
 - [ ] At least 5 sample postcodes hand-validated against the Environment Agency
       public flood map (results table in `docs/findings.md`)
 - [ ] Property-based tests (Hypothesis): flood-zone score is monotonic in
       stated zone; postcode-level lookup is idempotent
+      *(idempotency property covered for the postcode normaliser; flood-zone
+      monotonicity property pending)*
 - [ ] Methodology section "Hazard data" written
-- [ ] At least 3 new entries in `docs/decisions.md` added during the phase
+- [x] At least 3 new entries in `docs/decisions.md` added during the phase
 - [ ] Test coverage ≥ 70% on the `hazards/` module
 - [ ] Tag: `v0.2-hazards`
 
