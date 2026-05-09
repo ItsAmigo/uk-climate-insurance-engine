@@ -50,43 +50,74 @@ LAYERS = {
 
 
 def _fetch_layer(layer_id: int, label: str, out_path: Path) -> int:
+    """Stream features from the Feature Service into a per-page line-delimited
+    JSON file, then stitch into a single GeoJSON FeatureCollection at the end.
+
+    Streaming via NDJSON keeps memory usage flat regardless of feature count
+    (the EA Zone 2 layer is 553k features ~ multi-GB of JSON which would not
+    fit comfortably in RAM). The final GeoJSON file is what the loader reads;
+    the `.ndjson` staging file is removed once the merge succeeds.
+    """
     print(f"==> {label} (layer {layer_id})", flush=True)
-    features: list[dict[str, Any]] = []
-    offset = 0
-    while True:
-        params = {
-            "where": "1=1",
-            "outFields": "*",
-            "returnGeometry": "true",
-            "outSR": "4326",
-            "resultOffset": str(offset),
-            "resultRecordCount": str(PAGE_SIZE),
-            "f": "geojson",
-        }
-        url = f"{BASE_URL}/{layer_id}/query?" + urllib.parse.urlencode(params)
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-        try:
-            with urllib.request.urlopen(req, timeout=120) as r:
-                page = json.loads(r.read().decode("utf-8"))
-        except Exception as exc:
-            print(f"  page {offset} ERROR: {exc}; sleeping 5s and retrying", flush=True)
-            time.sleep(5)
-            continue
-        chunk = page.get("features", [])
-        features.extend(chunk)
-        offset += len(chunk)
-        if offset % 20_000 == 0 or len(chunk) < PAGE_SIZE:
-            print(f"  {label}: {offset:,} features", flush=True)
-        if len(chunk) < PAGE_SIZE:
-            break
-        time.sleep(SLEEP_SECONDS)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        json.dumps({"type": "FeatureCollection", "features": features}),
-        encoding="utf-8",
-    )
-    print(f"  {label}: TOTAL {len(features):,} features written -> {out_path}", flush=True)
-    return len(features)
+    staging = out_path.with_suffix(".ndjson")
+    offset = 0
+    if staging.exists():
+        # Resume: count lines already written; assume each is one feature.
+        offset = sum(1 for _ in staging.open(encoding="utf-8"))
+        print(f"  resuming at offset {offset:,}", flush=True)
+
+    written = offset
+    with staging.open("a", encoding="utf-8") as ndjson:
+        while True:
+            params = {
+                "where": "1=1",
+                "outFields": "*",
+                "returnGeometry": "true",
+                "outSR": "4326",
+                "resultOffset": str(offset),
+                "resultRecordCount": str(PAGE_SIZE),
+                "f": "geojson",
+            }
+            url = f"{BASE_URL}/{layer_id}/query?" + urllib.parse.urlencode(params)
+            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            try:
+                with urllib.request.urlopen(req, timeout=120) as r:
+                    page = json.loads(r.read().decode("utf-8"))
+            except Exception as exc:
+                print(f"  page {offset} ERROR: {exc}; sleeping 5s and retrying", flush=True)
+                time.sleep(5)
+                continue
+            chunk: list[dict[str, Any]] = page.get("features", [])
+            for feat in chunk:
+                ndjson.write(json.dumps(feat))
+                ndjson.write("\n")
+            ndjson.flush()
+            offset += len(chunk)
+            written += len(chunk)
+            if offset % 20_000 == 0 or len(chunk) < PAGE_SIZE:
+                print(f"  {label}: {offset:,} features", flush=True)
+            if len(chunk) < PAGE_SIZE:
+                break
+            time.sleep(SLEEP_SECONDS)
+
+    # Stitch NDJSON into a single GeoJSON FeatureCollection on disk.
+    print(f"  {label}: stitching to {out_path}", flush=True)
+    with out_path.open("w", encoding="utf-8") as out, staging.open(encoding="utf-8") as nd:
+        out.write('{"type":"FeatureCollection","features":[')
+        first = True
+        for line in nd:
+            line = line.strip()
+            if not line:
+                continue
+            if not first:
+                out.write(",")
+            out.write(line)
+            first = False
+        out.write("]}")
+    staging.unlink()
+    print(f"  {label}: TOTAL {written:,} features -> {out_path}", flush=True)
+    return written
 
 
 def main(argv: list[str] | None = None) -> int:
