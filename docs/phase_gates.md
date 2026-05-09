@@ -43,7 +43,8 @@ After ticking a phase complete:
 - [x] Property-based tests (Hypothesis): flood-zone score is monotonic in
       stated zone; postcode-level lookup is idempotent *(see
       `tests/test_hazard_properties.py`; 7 passing properties)*
-- [ ] Methodology section "Hazard data" written
+- [x] Methodology section "Hazard data" written *(`docs/methodology.md` §2,
+      2026-05-09)*
 - [x] At least 3 new entries in `docs/decisions.md` added during the phase
       *(7 entries since 2026-05-08)*
 - [x] Test coverage ≥ 70% on the `hazards/` module *(86% as of 2026-05-09)*
