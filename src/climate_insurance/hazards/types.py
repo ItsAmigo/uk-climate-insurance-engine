@@ -72,3 +72,17 @@ class Coordinate:
             raise ValueError(f"Latitude {self.lat} outside UK bounding box")
         if not (UK_LON_MIN <= self.lon <= UK_LON_MAX):
             raise ValueError(f"Longitude {self.lon} outside UK bounding box")
+
+
+@dataclass(frozen=True, slots=True)
+class HazardProfile:
+    """The combined hazard exposure for a single coordinate / postcode.
+
+    `windstorm_band` is None until the wind-data ingestion lands in a later
+    Phase 1 slice; downstream consumers must treat None as "wind not yet
+    modelled" rather than "no wind risk".
+    """
+
+    flood_zone: FloodZone
+    subsidence_class: SubsidenceClass
+    windstorm_band: int | None = None
