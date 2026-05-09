@@ -35,6 +35,47 @@ per call (~400 calls, ~25-30 min total) with a polite 0.2s sleep
 between calls. This is reproducible from a public repo without browser
 automation, scraping JavaScript, or relying on a third party.
 
+## 2026-05-09 — Subsidence dominant-class rule: first-listed SOIL_GROUP token
+Considered three ways to map BGS SPM `SOIL_GROUP` (which uses compound
+descriptions like "MEDIUM TO LIGHT(SILTY) TO HEAVY") to a 3-level
+subsidence-risk class: (a) dominant-class rule reading the *first* token
+in the compound, (b) any-mention-of-HEAVY-equals-HIGH conservative rule,
+(c) literature-cited mapping from a published UK geotech paper. Chose
+(a). Rationale: BGS lists tokens in dominance order per the SPM user
+guide, so the first token is by definition the prevalent grain class for
+that 1 km cell. The rule is deterministic, lives in code at
+`hazards/subsidence._subsidence_class_from_soil_group`, and the entire
+methodology fits in a paragraph in `methodology.md`. Conservative rule
+(b) was rejected because it would over-flag every cell that has *any*
+heavy clay content, inflating the subsidence-claim pool well above what
+ABI aggregate stats show. Literature mapping (c) was rejected for now
+because no UK paper directly maps BGS SPM tokens — would require ~30 min
+of search and may not exist; we can revisit if a reviewer asks.
+
+## 2026-05-09 — Subsidence-data REVERSAL: BGS SPM 1km, not DEFRA Soilscapes
+Reverses the 2026-05-08 decision below. The earlier decision claimed
+"Soilscapes is fully open under OGL v3.0", but on actually checking the
+data.gov.uk record and the Cranfield LandIS terms, Soilscapes is
+**Cranfield-owned** and the licence explicitly says *"Soilscapes is not
+intended as a means for supporting … commercial activities"* with a
+required licensing agreement. A portfolio project explicitly built to
+land a commercial-industry job is borderline non-compliant.
+
+Switched to **BGS Soil Parent Material 1km** as the subsidence proxy. The
+1 km free release is genuinely Open Government Licence v3.0, hosted
+directly by BGS at a stable WordPress media-id endpoint
+(`https://www.bgs.ac.uk/?wpdmdl=49018`), and covers Great Britain
+(England + Wales + Scotland; Northern Ireland is not covered, falls back
+to MEDIUM in the lookup). The relevant attribute is `SOIL_GROUP` which
+uses HEAVY/MEDIUM/LIGHT shorthand mapping closely to clay-driven
+shrink-swell potential.
+
+Trade-offs: SPM is a simpler categorical classification than Soilscapes
+(HEAVY/MEDIUM/LIGHT vs Soilscapes' detailed soil-association classes),
+but the subsidence question only needs grain-class-driven shrink-swell
+risk anyway, so the simpler categorical input is fit-for-purpose. The
+SOIL_GROUP -> SubsidenceClass mapping rule is logged separately above.
+
 ## 2026-05-09 — Coordinate reference system: WGS84 (EPSG:4326) end-to-end
 Considered: ingest in British National Grid (EPSG:27700, the EA's
 native CRS) and reproject at lookup time vs request `outSR=4326` from

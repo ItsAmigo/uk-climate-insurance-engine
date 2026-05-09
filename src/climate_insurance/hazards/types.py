@@ -31,6 +31,20 @@ class FloodZone(IntEnum):
     ZONE_3 = 3  # high    (> 1 in 100 fluvial / 1 in 200 tidal; covers 3a + 3b)
 
 
+class SubsidenceClass(IntEnum):
+    """Coarse subsidence-risk classification driven by clay shrink-swell.
+
+    Derived at lookup time from the BGS Soil Parent Material `SOIL_GROUP`
+    field via the dominant-class rule (see `hazards.subsidence` and
+    docs/methodology.md). Order is risk-monotonic: higher value = higher
+    expected damage rate from clay-soil shrink and swell.
+    """
+
+    LOW = 1  # sand-dominated; minimal shrink-swell
+    MEDIUM = 2  # mixed soils, peat, or chalk-influenced; moderate risk
+    HIGH = 3  # clay-dominated; high shrink-swell risk
+
+
 @dataclass(frozen=True, slots=True)
 class Postcode:
     """A validated, normalised UK postcode split into outward and inward parts."""
