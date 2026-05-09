@@ -141,22 +141,37 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    paths: dict[str, Path] = {label: args.raw_dir / f"{label}.geojson" for label in LAYERS}
+    geojson_paths: dict[str, Path] = {label: args.raw_dir / f"{label}.geojson" for label in LAYERS}
 
     if not args.skip_download:
         for label, layer_id in LAYERS.items():
-            _fetch_layer(layer_id, label, paths[label])
+            _fetch_layer(layer_id, label, geojson_paths[label])
     else:
-        for _label, p in paths.items():
+        for _label, p in geojson_paths.items():
             if not p.exists():
                 parser.error(f"--skip-download set but {p} does not exist")
             print(f"Reusing existing {p}", flush=True)
 
+    # Prefer NDJSON if available — DuckDB's read_json can't stream the
+    # multi-GB single-FeatureCollection form without OOMing. The
+    # geojson_to_ndjson script (or future fetcher) writes per-feature lines
+    # that read_ndjson handles in constant memory.
+    ingest_paths: dict[str, Path] = {}
+    for label, p in geojson_paths.items():
+        ndjson = p.with_suffix(".ndjson")
+        if ndjson.exists():
+            print(f"Using NDJSON form: {ndjson}", flush=True)
+            ingest_paths[label] = ndjson
+        else:
+            ingest_paths[label] = p
+
     print(f"Ingesting -> {args.db}", flush=True)
     counts = load_ea_flood_zones(
-        zone_2_geojson=paths["flood_zone_2"],
-        zone_3_geojson=paths["flood_zone_3"],
+        zone_2_geojson=ingest_paths["flood_zone_2"],
+        zone_3_geojson=ingest_paths["flood_zone_3"],
         db_path=args.db,
+        memory_limit="10GB",
+        threads=1,
     )
     for table, n in counts.items():
         print(f"  {table}: {n:,} polygons", flush=True)

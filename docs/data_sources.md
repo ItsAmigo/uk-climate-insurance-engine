@@ -91,24 +91,57 @@ ingestion code.
   lower-resolution. Document any spatial mismatch with the others in
   `decisions.md`.
 
-### 5. British Geological Survey — GeoSure (subsidence)
-- **URL:** https://www.bgs.ac.uk/datasets/geosure/
-  WMS / WFS endpoints: https://ogc.bgs.ac.uk/
-- **Extract:** GeoSure susceptibility ratings — primarily shrink–swell clays
-  (the dominant subsidence driver in England). Other layers: landslides,
-  soluble rocks, compressible ground, collapsible deposits, running sand.
-- **License:** **NOT fully open.** GeoSure is a licensable product.
-  - **OpenGeoscience** offers free *viewing* via a WMS but does NOT permit
-    redistribution of the underlying ratings.
-  - For commercial / redistributable use BGS requires a paid licence.
-  - For this portfolio we either (a) use the OpenGeoscience WMS for
-    visualisation only and aggregate categorical risk to postcode without
-    redistributing the underlying raster, or (b) substitute Soilscapes (DEFRA,
-    OGL) as a coarser open proxy.
-  - **Decision required** — log in `decisions.md` before ingestion.
-- **Registration:** Yes for download; no for OpenGeoscience WMS view.
-- **Gotchas:** Do not commit any GeoSure layer to git regardless of route.
-  Re-derive on every clone.
+### 5. British Geological Survey — Soil Parent Material 1km (subsidence proxy)
+- **URL:** https://www.bgs.ac.uk/datasets/soil-parent-material-model/
+  Direct GeoPackage download: https://www.bgs.ac.uk/?wpdmdl=49018
+  ESRI shapefile alternative: https://www.bgs.ac.uk/?wpdmdl=72034
+  User guide: https://www.bgs.ac.uk/?wpdmdl=12059
+- **Extract:** 1 km grid cells covering Great Britain (241,514 cells), with
+  six soil-parent-material attributes per cell. We use `SOIL_GROUP`
+  (HEAVY/MEDIUM/LIGHT shorthand for clay/silt/sand dominance) as the
+  subsidence-risk proxy via the dominant-class rule logged in
+  `decisions.md` 2026-05-09. Other attributes (`SOIL_TEX`, `PMM_GRAIN`,
+  `CARB_CNTNT`, `SOIL_DEPTH`, `ESB_DESC`) are loaded but unused at this
+  stage — useful for future refinement.
+- **License:** Open Government Licence v3.0 with required attribution:
+  *"Contains British Geological Survey materials © UKRI 2019. All rights
+  reserved."* The 1 km free release is the canonical OGL-licensed product.
+  The 1:50,000 high-res version is a paid commercial licence and is
+  out of scope for this project.
+- **Source CRS:** OSGB36 / British National Grid (EPSG:27700). The loader
+  reprojects to WGS84 (EPSG:4326) at ingest using DuckDB-spatial's
+  `ST_Transform` + `ST_FlipCoordinates` so geometries align with the rest
+  of the pipeline (which uses ST_Point(lon, lat)).
+- **Registration:** None for the free 1 km dataset.
+- **Refresh:** `make ingest-bgs-spm` — single-shot HTTPS download of the
+  ZIP (~166 MB), unzips to a ~919 MB GeoPackage, ingests in ~2 minutes.
+- **Currently pinned release:** Soil Parent Material V1 1km, dated 2019
+  (BGS has not published a newer version of the free release as of
+  May 2026). 241,514 grid cells loaded.
+- **Coverage gap:** Northern Ireland is not in the BGS SPM coverage. The
+  lookup function falls back to `SubsidenceClass.MEDIUM` for any
+  coordinate outside the loaded grid.
+- **Gotchas:**
+  - The GeoPackage has six layers, all with *identical* feature schema —
+    they only differ in which attribute they're named after. Load any
+    single layer; we use 'Soil Texture' canonically.
+  - GeoPackage is 919 MB on disk — do NOT commit. Place in
+    `data/raw/bgs_spm/` (gitignored).
+
+### 5b. (rejected — see decisions.md 2026-05-09 reversal) DEFRA Soilscapes
+- Rejected after a closer licence read showed Soilscapes is Cranfield-owned
+  and explicitly *"not intended for supporting commercial activities"*.
+  The 2026-05-08 decision-log entry that called it "fully open under OGL"
+  was incorrect.
+
+### 5c. (alternative for premium reviewers) BGS GeoSure (paid)
+- The BGS GeoSure dataset is the gold-standard UK subsidence dataset
+  (clay shrink-swell + landslide + collapsible ground + soluble rocks +
+  running sand) but is a paid licensable product. Free viewing via the
+  OpenGeoscience WMS is permitted but redistribution of the underlying
+  ratings is not. Out of scope for an open portfolio repo; a follow-up
+  study with a BGS data licence could swap GeoSure in behind the same
+  `subsidence_class` interface.
 
 ### 6. Met Office UKCP18 via CEDA Archive
 - **URL:** https://archive.ceda.ac.uk/

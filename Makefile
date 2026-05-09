@@ -1,7 +1,7 @@
 # Climate Insurance Engine — developer shortcuts.
 # All recipes use `uv run` so the project venv is always used.
 # On Windows, run via Git Bash, WSL, or install make:  winget install ezwinports.make
-.PHONY: install test lint fmt notebook duckdb clean help ingest-onspd ingest-ea-flood
+.PHONY: install test lint fmt notebook duckdb clean help ingest-onspd ingest-ea-flood ingest-bgs-spm
 
 help:
 	@echo "Targets:"
@@ -49,6 +49,11 @@ ingest-onspd:
 # Pass SKIP=1 to reuse an existing GeoJSON in data/raw/ea_flood_zones/.
 ingest-ea-flood:
 	uv run python -m scripts.fetch_ea_flood_zones $(if $(SKIP),--skip-download,)
+
+# Download BGS Soil Parent Material 1km GeoPackage and ingest. ~2 min.
+# Pass SKIP=1 to reuse an existing ZIP in data/raw/bgs_spm/.
+ingest-bgs-spm:
+	uv run python -m scripts.fetch_bgs_spm $(if $(SKIP),--skip-download,)
 
 clean:
 	rm -rf .pytest_cache .mypy_cache .ruff_cache htmlcov coverage.xml .coverage

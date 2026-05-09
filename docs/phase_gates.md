@@ -26,24 +26,27 @@ After ticking a phase complete:
 ---
 
 ## Phase 1 — Hazard ingestion
-- [ ] Environment Agency Flood Zone 2 + 3 polygons loaded into DuckDB,
-      indexed spatially (R-tree or H3) *(loader + lookup code complete and
-      synthetic-tested; full England download in progress)*
+- [x] Environment Agency Flood Zone 2 + 3 polygons loaded into DuckDB,
+      indexed spatially (R-tree or H3) *(R-tree, 552,811 + 230,729 polygons
+      from the EA's ArcGIS Hub Feature Service, ingested 2026-05-09)*
 - [ ] SEPA + NRW + DfI Rivers flood polygons loaded into the same schema, harmonised
-- [ ] Subsidence proxy ingested (BGS GeoSure-via-WMS or DEFRA Soilscapes —
-      decision logged in `docs/decisions.md`)  *(decision: Soilscapes; loader pending)*
-- [ ] Postcode → hazard exposure function in `src/climate_insurance/hazards/`,
-      returning `{flood_zone, subsidence_class, windstorm_band}`
-      *(flood_zone slice complete via `lookup_postcode_flood_zone`)*
-- [ ] At least 5 sample postcodes hand-validated against the Environment Agency
-      public flood map (results table in `docs/findings.md`)
-- [ ] Property-based tests (Hypothesis): flood-zone score is monotonic in
-      stated zone; postcode-level lookup is idempotent
-      *(idempotency property covered for the postcode normaliser; flood-zone
-      monotonicity property pending)*
+- [x] Subsidence proxy ingested (BGS GeoSure-via-WMS or DEFRA Soilscapes —
+      decision logged in `docs/decisions.md`) *(decision reversed: BGS Soil
+      Parent Material 1km, 241,514 cells loaded 2026-05-09)*
+- [x] Postcode → hazard exposure function in `src/climate_insurance/hazards/`,
+      returning `{flood_zone, subsidence_class, windstorm_band}` *(via
+      `postcode_to_hazards()`; windstorm_band returns None until wind
+      ingestion lands)*
+- [x] At least 5 sample postcodes hand-validated against the Environment Agency
+      public flood map (results table in `docs/findings.md`) *(2026-05-09
+      entry, 5 / 5 match the EA service)*
+- [x] Property-based tests (Hypothesis): flood-zone score is monotonic in
+      stated zone; postcode-level lookup is idempotent *(see
+      `tests/test_hazard_properties.py`; 7 passing properties)*
 - [ ] Methodology section "Hazard data" written
 - [x] At least 3 new entries in `docs/decisions.md` added during the phase
-- [ ] Test coverage ≥ 70% on the `hazards/` module
+      *(7 entries since 2026-05-08)*
+- [x] Test coverage ≥ 70% on the `hazards/` module *(86% as of 2026-05-09)*
 - [ ] Tag: `v0.2-hazards`
 
 ---
