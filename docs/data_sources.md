@@ -72,14 +72,54 @@ ingestion code.
     apply UKCP18 directly to keep the climate layer single-sourced.
 
 ### 3. Natural Resources Wales — Flood Map for Planning (Wales)
-- **URL:** https://datamap.gov.wales/  (search "Flood Map for Planning")
-  Body root: https://naturalresources.wales/
-- **Extract:** Flood Zones 2 and 3 polygons for Wales.
-- **License:** Open Government Licence v3.0 with NRW / Cyfoeth Naturiol Cymru
-  attribution.
+- **Canonical source:** DataMapWales GeoServer WFS endpoint:
+  `https://datamap.gov.wales/geoserver/ows?service=WFS&version=2.0.0&request=GetFeature`
+  Layer group: `inspire-nrw:FloodMapforPlanningFloodZones2and3`
+  (layergroup id `2070`). Landing page:
+  https://datamap.gov.wales/layergroups/inspire-nrw:FloodMapforPlanningFloodZones2and3
+- **Extract:** `inspire-nrw:NRW_FLOODZONE_RIVERS_SEAS_MERGED` — the single
+  combined rivers + tidal layer that mirrors EA's "Flood Map for Planning"
+  output. The dataset uses a `risk` attribute carrying string values
+  *"Flood Zone 2"* / *"Flood Zone 3"* — directly mappable onto our
+  `FloodZone` enum, no harmonisation arithmetic needed. We **exclude**
+  the surface-water layer (`NRW_FLOODZONE_SURFACE_WATER_AND_SMALL_WATERCOURSES`)
+  to stay aligned with the EA scope (EA Flood Zones likewise exclude
+  surface water).
+- **License:** Open Government Licence v3.0. NRW attribution required:
+  *"Contains Natural Resources Wales information © Natural Resources Wales
+  and database right. All rights reserved."*
+- **Source CRS:** Default is British National Grid (`urn:ogc:def:crs:EPSG::27700`),
+  but the WFS supports server-side reprojection via `srsName=EPSG:4326`
+  so we request data already in WGS84 — no client-side `ST_Transform`
+  needed at ingest (unlike the BGS pipeline).
+- **Output format:** `application/json` — GeoServer returns GeoJSON
+  feature-collections compatible with the EA NDJSON loader pattern.
 - **Registration:** None.
-- **Gotchas:** Bilingual metadata (English / Welsh). Use English layers unless
-  rendering for a Welsh-language audience.
+- **Refresh:** `make ingest-nrw-flood` — paginates the WFS with `startIndex`
+  and `count` parameters; identifies user-agent; respectful 0.2 s sleep
+  between pages.
+- **Currently pinned release:** Layer published 2025-11-26 (most recent
+  NRW revision as of May 2026). Loaded **209,907 Zone-3 + 126,672 Zone-2
+  polygons** on 2026-05-15 (336,579 total features).
+- **Gotchas:**
+  - Bilingual attribute schema: `risk` (English) + `risk_cy` (Welsh, e.g.
+    *"Parth Llifogydd 3"*). The loader keys off `risk`; `risk_cy` is
+    discarded.
+  - Geometries are `MultiPolygon`. Same UK-bbox sanity filter we apply for
+    EA catches any parse-time corruption (none triggered for NRW in the
+    November 2025 release — all 336,579 features passed cleanly).
+  - **Wales' polygons are finer-grained than England's** despite a
+    far smaller land area: 336k Welsh features vs 783k English
+    features, so per-population the NRW mesh is roughly 10× denser
+    than the EA's. Don't be surprised that the file is ~1.1 GB.
+  - DuckDB's `read_json` materialises the whole FeatureCollection and
+    OOMs on a 16 GB machine for the GeoJSON form. Use the NDJSON form
+    instead (the fetcher writes NDJSON during streaming; if you only
+    have the stitched GeoJSON, run `scripts/geojson_to_ndjson.py` to
+    derive NDJSON in constant memory). The fetcher's `main()` picks
+    the NDJSON path automatically when re-running with `--skip-download`.
+  - Welsh data does not include the climate-change overlay; we apply
+    UKCP18 ourselves in Phase 3 (CLAUDE.md hard rule 8).
 
 ### 4. DfI Rivers — Strategic Flood Map (Northern Ireland)
 - **URL:** https://www.infrastructure-ni.gov.uk/  (search "Strategic Flood Map
