@@ -7,6 +7,27 @@ was chosen*, *why*. New entries at the top.
 
 ---
 
+## 2026-05-15 — Wales flood source: NRW Flood Map for Planning via DataMapWales WFS
+Considered three ways to obtain Welsh flood-zone polygons: (a) the Flood
+Risk Assessment Wales (FRAW) layer — NRW's newer post-2020 *risk-of-flooding*
+product that bands locations into High/Medium/Low after accounting for
+defences, (b) the older Flood Map for Planning (FMP) Zones 2 & 3 — the
+direct semantic twin of the EA dataset we already ingested for England,
+or (c) the surface-water and small-watercourses layer. Chose (b),
+specifically the `inspire-nrw:NRW_FLOODZONE_RIVERS_SEAS_MERGED` layer
+served from `https://datamap.gov.wales/geoserver/ows`. Rationale:
+zone-equivalence with EA is the cleanest harmonisation — the `risk`
+attribute carries the literal strings *"Flood Zone 2"* and *"Flood Zone 3"*
+which parse straight onto our `FloodZone` enum with no judgement calls.
+FRAW (a) was rejected because mapping "High / Medium / Low" onto EA zone
+semantics requires assumptions about defended-vs-undefended state that
+would diverge across the four nations and bury a methodological
+inconsistency in the model. Surface water (c) was excluded for the same
+reason it's excluded for EA: the Flood Map for Planning scope doesn't
+include surface-water flooding. The WFS supports server-side reprojection
+to EPSG:4326 via `srsName=EPSG:4326`, so unlike the BGS pipeline we
+avoid a client-side `ST_Transform` step at ingest.
+
 ## 2026-05-09 — Spatial backend: DuckDB `spatial` extension (not PostGIS)
 Considered: PostGIS (the production-grade spatial database, used by every
 serious GIS team) vs DuckDB's first-party `spatial` extension. PostGIS is

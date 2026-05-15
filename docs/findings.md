@@ -72,5 +72,68 @@ shows up when sampling actual residential postcodes (TA9 3ER etc.).
 - BGS Soil Parent Material 1km: V1 2019 release (241,514 cells)
 - Database: `data/processed/hazards.duckdb` (~1.5 GB on disk; gitignored)
 
-_(next entry written at the close of Phase 1 once the other 3 nations'
-flood data + wind ingestion lands)_
+## 2026-05-15 — Phase 1 — Wales (NRW) flood data added
+
+Natural Resources Wales' Flood Map for Planning ingested into the same
+DuckDB warehouse alongside the EA data. The combined-zone NRW feed
+(`inspire-nrw:NRW_FLOODZONE_RIVERS_SEAS_MERGED`, DataMapWales WFS) was
+fan-split by the `risk` attribute into matching schemas:
+
+- `nrw_flood_zone_3`: **209,907 polygons**
+- `nrw_flood_zone_2`: **126,672 polygons**
+
+Total NRW polygons: 336,579 features (consistent with the WFS feature
+count, no UK-bbox sanity drops). The flood lookup
+(`hazards/flood.py::lookup_flood_zone`) was refactored to query every
+nation's tables via `UNION ALL`, gracefully skipping nations whose
+tables aren't loaded; the existing 103 EA-only tests still pass plus
+6 new NRW-specific tests (project total 109, 85.2 % coverage).
+
+### Welsh-postcode validation (5 cases)
+
+| Postcode  | Location                                              | Our prediction | NRW DataMapWales says   | Match |
+|-----------|-------------------------------------------------------|----------------|-------------------------|-------|
+| CF10 1AR  | Cardiff city centre, beside the River Taff            | **ZONE_3**     | Flood Zone 3            | ✓     |
+| LL14 6DF  | Chirk / Wrexham, River Dee tributary                  | **ZONE_3**     | Flood Zone 3            | ✓     |
+| SA1 1AF   | Swansea Marina, tidal River Tawe                      | **ZONE_3**     | Flood Zone 3            | ✓     |
+| CF5 1ES   | Llandaff, Cardiff suburb                              | **ZONE_2**     | Flood Zone 2            | ✓     |
+| SY20 9JQ  | Machynlleth area, mid-Wales upland                    | **ZONE_1**     | Outside published zones | ✓     |
+
+As with the EA validation, this is a pipeline-correctness check: both
+sides read the same NRW polygons. The load-bearing claim is that
+ingest, bilingual-attribute splitting, WFS-side EPSG:4326 reprojection,
+R-tree index build, and multi-nation lookup union together reproduce
+the canonical NRW classification.
+
+### Welsh-coverage stats (5,000-postcode random sample, Wales-only)
+- **10.6 %** of Welsh postcodes fall inside Flood Zone 3
+- **3.3 %** in Zone 2 only
+- 86.2 % in Zone 1
+
+The Welsh Zone-3 hit rate is over twice the English figure (4.6 %).
+Two factors contribute: Wales' population is concentrated in river
+valleys and tidal coasts (South Wales coastal strip; Conwy / Clwyd /
+Tawe / Loughor estuaries), and NRW publishes the FMP at a finer
+polygon mesh than the EA — 336,579 Welsh polygons cover 92,124
+Welsh postcodes (≈ 3.7 polygons per postcode) versus 783,540 EA
+polygons covering 1.6 million English postcodes (≈ 0.5 polygons per
+postcode). Both effects push more postcode centroids into a
+classified polygon rather than the implicit Zone-1 default.
+
+### Pinned data state for this validation
+- ONSPD release: February 2026 (1,794,940 active postcodes;
+  92,124 Welsh)
+- EA Flood Map for Planning: November 2023 release (unchanged from
+  the prior entry)
+- NRW Flood Map for Planning: November 2025 release, served via
+  DataMapWales GeoServer WFS
+  - Welsh Zone 3: 209,907 polygons
+  - Welsh Zone 2: 126,672 polygons
+- Combined polygon count UK-wide (England + Wales):
+  ≈ 1.12 million flood polygons across four tables
+- BGS Soil Parent Material 1km: V1 2019 release (unchanged)
+- Database: `data/processed/hazards.duckdb` (now ~3 GB on disk;
+  gitignored)
+
+_(next entry written when SEPA + DfI Rivers land and Phase 1 closes
+fully)_

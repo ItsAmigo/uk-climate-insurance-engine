@@ -30,6 +30,9 @@ After ticking a phase complete:
       indexed spatially (R-tree or H3) *(R-tree, 552,811 + 230,729 polygons
       from the EA's ArcGIS Hub Feature Service, ingested 2026-05-09)*
 - [ ] SEPA + NRW + DfI Rivers flood polygons loaded into the same schema, harmonised
+      *(NRW done 2026-05-15 — `nrw_flood_zone_2` / `nrw_flood_zone_3` tables,
+      harmonised via the shared `FloodZone` enum and a `UNION ALL` lookup;
+      SEPA + DfI remain)*
 - [x] Subsidence proxy ingested (BGS GeoSure-via-WMS or DEFRA Soilscapes —
       decision logged in `docs/decisions.md`) *(decision reversed: BGS Soil
       Parent Material 1km, 241,514 cells loaded 2026-05-09)*

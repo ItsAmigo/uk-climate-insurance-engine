@@ -43,7 +43,8 @@ classification rules used to map raw data into the public
 | Postcode → coordinate | ONS Postcode Directory | February 2026 | OGL v3.0 | 1,794,940 active UK postcodes |
 | England flood zones | Environment Agency Flood Map for Planning (Rivers and Sea), ArcGIS Hub Feature Service | November 2023 | OGL v3.0 | 230,729 Zone-3 + 552,811 Zone-2 polygons |
 | Subsidence proxy (GB) | British Geological Survey Soil Parent Material 1km | V1, 2019 | OGL v3.0 | 241,514 1km grid cells |
-| Wales / Scotland / NI flood zones | Natural Resources Wales / SEPA / DfI Rivers | _(pending — Phase 1 follow-up slice)_ | OGL v3.0 | _(pending)_ |
+| Wales flood zones | Natural Resources Wales Flood Map for Planning, DataMapWales WFS (`inspire-nrw:NRW_FLOODZONE_RIVERS_SEAS_MERGED`) | November 2025 | OGL v3.0 | 209,907 Zone-3 + 126,672 Zone-2 polygons |
+| Scotland / NI flood zones | SEPA / DfI Rivers | _(pending — Phase 1 follow-up slice)_ | OGL v3.0 | _(pending)_ |
 | Wind | _(pending — Phase 1 follow-up slice)_ | — | — | — |
 
 Per-source licence terms, attribution strings, refresh cadence, and
@@ -115,6 +116,50 @@ the implicit default rather than a separately-loaded layer because
 The Zone 3-takes-precedence rule reflects the EA's own scheme: Zone 3
 is a stricter subset of areas the EA consider at higher probability,
 so wherever both apply, Zone 3 is the load-bearing classification.
+
+### 2.4a Multi-nation flood-zone harmonisation (Wales)
+
+The same `FloodZone` enum is reused for Wales. Natural Resources Wales
+publishes a combined-zone product (`NRW_FLOODZONE_RIVERS_SEAS_MERGED`,
+DataMapWales WFS) where each polygon carries a `risk` attribute taking
+the literal English-language values *"Flood Zone 2"* and *"Flood Zone 3"*.
+The loader in `data/nrw_flood_zones.py` splits this single feed into two
+DuckDB tables (`nrw_flood_zone_2`, `nrw_flood_zone_3`) that mirror the EA
+schema, and the lookup in `hazards/flood.py` queries every nation's
+tables that exist in the catalog via `UNION ALL`. This keeps each
+nation's ingest additive — adding Scotland or Northern Ireland later is
+a new loader plus two new table names registered in the lookup tuple, no
+existing-code rewrites needed.
+
+Two harmonisation calls deserve note:
+
+1. **We chose NRW's Flood Map for Planning (FMP), not the Flood Risk
+   Assessment Wales (FRAW) layer.** FRAW is NRW's newer post-2020
+   *risk-of-flooding* product that bands locations into High / Medium /
+   Low *after accounting for defences*. FRAW is excellent for end-user
+   advisory ("am I at risk?"), but mapping its High / Medium / Low onto
+   the EA's Zone 2 / Zone 3 (defence-agnostic, probability-based)
+   semantics requires assumptions about defended-vs-undefended state
+   that would silently embed a methodological inconsistency. The FMP
+   layer is the direct semantic twin of the EA data and harmonises with
+   zero arithmetic — the `risk` attribute parses verbatim onto our enum.
+   The trade-off (we forgo the defence-aware refinement FRAW would
+   bring) is logged in `docs/decisions.md` (2026-05-15).
+2. **Surface-water and small-watercourses flooding is excluded.** NRW
+   publishes this as a separate layer (`NRW_FLOODZONE_SURFACE_WATER_AND_
+   SMALL_WATERCOURSES`); the EA's Flood Map for Planning likewise
+   excludes surface water. Including it on one side and not the other
+   would bias Welsh exposure upward. Surface-water flooding is a
+   well-known modelling gap in the UK pricing literature — a future
+   slice could add a UK-wide surface-water layer (e.g. JBA's RoFSW
+   product) and treat it as an *additional* hazard channel, not part of
+   the Zone 2 / Zone 3 framework.
+
+**CRS handling.** NRW serves polygons in EPSG:27700 by default but
+honours `srsName=EPSG:4326` on the WFS GetFeature request, so we ask
+for WGS84 server-side and avoid a `ST_Transform` step at ingest. The
+same UK-bbox sanity filter we apply to EA data catches any parse-time
+corruption.
 
 **Subsidence (`hazards/subsidence.py`).** The BGS SPM `SOIL_GROUP`
 field uses a HEAVY / MEDIUM / LIGHT shorthand for grain-class
@@ -225,6 +270,37 @@ public statement that approximately 5.2 million English properties
 postcode-level density in cities (which are often not on floodplains)
 brings the postcode-level hit rate below the property-level figure.
 The full validation entry is in `docs/findings.md` (2026-05-09).
+
+**Wales (NRW).** Five Welsh postcodes spanning Zone 1 / 2 / 3 across
+north, mid and south Wales, predicted via the same `postcode_to_hazards()`
+pipeline (which now unions across EA and NRW tables):
+
+| Postcode  | Location                                   | Predicted | Match (NRW DataMapWales) |
+|-----------|--------------------------------------------|-----------|--------------------------|
+| CF10 1AR  | Cardiff city centre, beside the River Taff | ZONE_3    | ✓                        |
+| LL14 6DF  | Chirk / Wrexham, River Dee tributary       | ZONE_3    | ✓                        |
+| SA1 1AF   | Swansea Marina, tidal Tawe                 | ZONE_3    | ✓                        |
+| CF5 1ES   | Llandaff, Cardiff suburb                   | ZONE_2    | ✓                        |
+| SY20 9JQ  | Machynlleth area, mid-Wales upland         | ZONE_1    | ✓                        |
+
+A 5,000-postcode random-sample check across Wales returned 10.6 % in
+Zone 3 and 3.3 % in Zone 2 — a Z3 hit-rate roughly 2.3× the English
+figure. Two factors contribute: (a) Welsh population is concentrated
+in river valleys and tidal coasts (the South Wales coastal strip,
+Conwy / Clwyd valleys, the Tawe / Loughor estuaries), and (b) NRW's
+Flood Map for Planning is published at a finer polygon resolution
+than the EA's — 336,579 Welsh polygons cover 92,124 postcodes
+(≈ 3.7 polygons per postcode) versus 783,540 English polygons covering
+1.6 million English postcodes (≈ 0.5 polygons per postcode). The
+finer polygon mesh makes more postcode centroids land *inside* a
+classified polygon rather than in the implicit Zone 1 default.
+
+As with the English hand-validation, this is a pipeline-correctness
+check — both sides ultimately read the same NRW polygons. The
+load-bearing claim is that the ingest, the bilingual-attribute
+splitting on `risk`, the EPSG:4326 reprojection, the R-tree index,
+and the multi-nation `UNION ALL` in the lookup together reproduce
+the canonical classification.
 
 ### 2.8 Property-based tests
 

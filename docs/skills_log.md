@@ -43,4 +43,25 @@ and the problem each one solved. Append to this at the end of every session.
 - Reference: pre-commit docs §"Filtering files with types" + git's two-step
   index model.
 
+## 2026-05-15 — Phase 1 — OGC WFS GetFeature pagination (vs ArcGIS REST)
+- DataMapWales serves NRW data via a standards-compliant GeoServer WFS
+  (`service=WFS&version=2.0.0&request=GetFeature&typeNames=...`), paginated
+  with `startIndex` + `count`, with server-side reprojection via `srsName`.
+- Solved: pulling Welsh Flood Map for Planning polygons without having to
+  client-side reproject from BNG (EPSG:27700) — the WFS honours
+  `srsName=EPSG:4326`, so the GeoJSON response arrives in WGS84 already
+  aligned with our ONSPD pipeline. Notably simpler than the EA's
+  ArcGIS REST `query?resultOffset=...&resultRecordCount=...` pattern.
+- Reference: https://docs.geoserver.org/main/en/user/services/wfs/reference.html#getfeature
+
+## 2026-05-15 — Phase 1 — Catalog-aware UNION ALL lookups in DuckDB
+- DuckDB's `information_schema.tables` lets a single SQL function check
+  which optional tables exist at call time and stitch only those into a
+  `UNION ALL`. Used here to make `lookup_flood_zone` query EA tables on
+  one machine and EA + NRW tables on another without breaking either.
+- Solved: the awkward fork between "production DB" (all four nations
+  loaded) and test fixtures (typically only one nation), without
+  branching per environment in the application code.
+- Reference: https://duckdb.org/docs/sql/information_schema
+
 _(append one entry per session)_
